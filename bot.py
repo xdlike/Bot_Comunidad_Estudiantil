@@ -135,12 +135,16 @@ class VerificacionBot(commands.Bot):
         intents.members = True
         super().__init__(command_prefix='!', intents=intents)
 
+    # 🔗 AGREGAMOS ESTO: El gancho asíncrono oficial para la nube
+    async def setup_hook(self):
+        self.loop.create_task(iniciar_servidor_web())
+
     async def on_ready(self):
         print(f'=============================================')
         print(f'✅ ¡Bot encendido y conectado con éxito!')
         print(f'🤖 Nombre del bot: {self.user}')
         print(f'=============================================')
-        # Hacemos que el botón sea persistente (para que funcione aunque el bot se apague y prenda)
+        # Hacemos que el botón sea persistente
         self.add_view(VistaBotonInicio())
 
 bot = VerificacionBot()
@@ -174,13 +178,12 @@ async def iniciar_servidor_web():
     await site.start()
     print(f"🌐 Servidor web de respaldo encendido en el puerto {puerto}")
 
-# Modificamos el on_ready para que encienda este servidor web
-@bot.event
-async def on_ready_web():
-    await iniciar_servidor_web()
+bot = VerificacionBot()
 
-# Registramos la función para que corra al encender
-bot.loop.create_task(iniciar_servidor_web())
+# ... (aquí en medio se queda tu comando !desplegar_boton)
+
+if __name__ == '__main__':
+    bot.run(TOKEN)
 
 if __name__ == '__main__':
     bot.run(TOKEN)
