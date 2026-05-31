@@ -66,36 +66,28 @@ class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"): # (O e
     input_correo = ui.TextInput(label="Correo del Tec", placeholder="A0XXXXXXX@tec.mx", min_length=12)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # 1. CONGELAMOS EL RELOJ DE DISCORD DE INMEDIATO 🛑
-        await interaction.response.defer(ephemeral=True) 
+        # 1. 🛡️ LE DECIMOS A DISCORD QUE ESPERE (Evita el "Interacción fallida")
+        await interaction.response.defer(ephemeral=True)
+        
+        correo = self.correo.value
+        # Generamos el código (aquí va tu lógica actual para el código)
+        codigo = generar_codigo() 
 
-        correo = self.input_correo.value.strip().lower()
+        # 2. 🧵 CORREMOS EL ENVÍO EN UN HILO SEPARADO (Evita el congelamiento del bot)
+        import asyncio
+        exito = await asyncio.to_thread(enviar_correo_verificacion, correo, codigo)
 
-        # 2. Validación matemática de cadena: debe terminar en @tec.mx
-        if not correo.endswith("@tec.mx"):
-            # OJO: Como ya usamos .defer(), ahora para responder se usa .followup.send
-            await interaction.followup.send("❌ Correo inválido. Debes ingresar obligatoriamente tu correo institucional terminado en `@tec.mx`.", ephemeral=True)
-            return
-
-        codigo = str(random.randint(100000, 999999))
-        datos_verificacion[interaction.user.id] = {"correo": correo, "codigo": codigo}
-
-        # 3. Enviamos el correo real (Gmail puede tardar lo que quiera, el reloj está pausado)
-        exito = enviar_correo_verificacion(correo, codigo)
-
+        # 3. 📬 RESPONDEMOS USANDO EL FOLLOWUP (Porque ya usamos defer arriba)
         if exito:
-            view = ui.View()
-            btn_codigo = ui.Button(label="Ingresar Código", style=discord.ButtonStyle.green)
-            
-            async def click_codigo(inter):
-                await inter.response.send_modal(ModalCodigo())
-            
-            btn_codigo.callback = click_codigo
-            view.add_item(btn_codigo)
-
-            await interaction.followup.send("📧 Te hemos enviado un código a tu correo institucional. Revisa tu bandeja de entrada (y carpeta de No deseados) y da clic abajo para ingresarlo.", view=view, ephemeral=True)
+            await interaction.followup.send(
+                f"✅ Hemos enviado un código de verificación a **{correo}**. Por favor revisa tu bandeja de entrada (y la carpeta de spam).", 
+                ephemeral=True
+            )
         else:
-            await interaction.followup.send("❌ Hubo un problema al enviar el correo. Por favor contacta al staff del servidor.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Hubo un problema al enviar el correo. Por favor contacta al staff del servidor.", 
+                ephemeral=True
+            )
 
         codigo = str(random.randint(100000, 999999))
         datos_verificacion[interaction.user.id] = {"correo": correo, "codigo": codigo}
