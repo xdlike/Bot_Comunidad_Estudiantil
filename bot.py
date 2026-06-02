@@ -71,18 +71,20 @@ class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        # 1. 🛡️ LE DECIMOS A DISCORD QUE ESPERE (Evita el "Interacción fallida")
+        # 1. Le decimos a Discord que espere
         await interaction.response.defer(ephemeral=True)
         
         correo = self.correo.value
-        # Generamos el código (aquí va tu lógica actual para el código)
-        codigo = generar_codigo() 
+        
+        # 2. 🎲 GENERAR CÓDIGO REAL DE 6 DÍGITOS
+        import random
+        codigo = str(random.randint(100000, 999999)) 
 
-        # 2. 🧵 CORREMOS EL ENVÍO EN UN HILO SEPARADO (Evita el congelamiento del bot)
+        # 3. Corremos el envío en un hilo separado
         import asyncio
         exito = await asyncio.to_thread(enviar_correo_verificacion, correo, codigo)
 
-        # 3. 📬 RESPONDEMOS USANDO EL FOLLOWUP (Porque ya usamos defer arriba)
+        # 4. Respondemos al alumno
         if exito:
             await interaction.followup.send(
                 f"✅ Hemos enviado un código de verificación a **{correo}**. Por favor revisa tu bandeja de entrada (y la carpeta de spam).", 
