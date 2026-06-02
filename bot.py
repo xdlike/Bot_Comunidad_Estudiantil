@@ -62,8 +62,13 @@ class ModalCodigo(ui.Modal, title="Paso 2: Introduce tu Código"):
 
 # --- INTERFAZ: Formulario para ingresar el Correo del Tec ---
 # --- INTERFAZ: Formulario para ingresar el Correo del Tec ---
-class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"): # (O el título que tengas)
-    input_correo = ui.TextInput(label="Correo del Tec", placeholder="A0XXXXXXX@tec.mx", min_length=12)
+class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"):
+    # REPARACIÓN: Cambiamos 'input_correo' por 'correo'
+    correo = ui.TextInput(
+        label="Correo del Tec", 
+        placeholder="A0XXXXXXX@tec.mx", 
+        min_length=12
+    )
 
     async def on_submit(self, interaction: discord.Interaction):
         # 1. 🛡️ LE DECIMOS A DISCORD QUE ESPERE (Evita el "Interacción fallida")
