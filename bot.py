@@ -1,4 +1,5 @@
 import discord
+import requests
 from discord.ext import commands
 from discord import ui
 import smtplib
@@ -24,35 +25,28 @@ datos_verificacion = {}
 # --- FUNCIÓN: Envío de Correo (Ejecutada en segundo plano con Timeout e IPv4 Forzado) ---
 def enviar_correo_verificacion(correo_alumno, codigo_seguridad):
     try:
-        # Redacción diseñada para mitigar filtros antispam
-        cuerpo = f"Qué onda,\n\nTe paso el número de registro para lo de la Comunidad Estudiantil:\n\n{codigo_seguridad}\n\nSaludos."
-        msg = MIMEText(cuerpo)
-        msg['Subject'] = 'Folio de ingreso - Comunidad'
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = correo_alumno
+        print(f"🌐 [LOG] Enviando señal a Make para: {correo_alumno}...")
+        
+        # Pega aquí la URL de tu webhook de Make
+        webhook_url = "https://hook.eu1.make.com/c1sfphwwhlv3wov2546nmihk64bgl2gk" 
+        
+        datos = {
+            "correo": correo_alumno,
+            "codigo": codigo_seguridad
+        }
+        
+        # Enviamos la solicitud HTTP (Puerto 443), Render jamás bloqueará esto
+        respuesta = requests.post(webhook_url, json=datos, timeout=10.0)
+        
+        if respuesta.status_code == 200:
+            print("✨ [LOG] ¡Make recibió la orden y envió el correo con éxito!")
+            return True
+        else:
+            print(f"⚠️ [LOG] Make respondió con error: {respuesta.status_code}")
+            return False
 
-        print(f"🔌 [LOG] Conectando a Gmail para enviar código a: {correo_alumno}...")
-        
-        # 🌐 TRUCO CLAVE: Forzamos la resolución de Gmail estrictamente a IPv4 numérico
-        import socket
-        try:
-            gmail_ipv4 = socket.gethostbyname('smtp.gmail.com')
-            print(f"🔍 [LOG] IP de Gmail forzada a IPv4: {gmail_ipv4}")
-        except Exception as socket_error:
-            print(f"⚠️ [LOG] Falló resolución IPv4, usando host por defecto: {socket_error}")
-            gmail_ipv4 = 'smtp.gmail.com'
-        
-        # Conexión usando la IP IPv4 fija para saltar el bloqueo de Render
-        with smtplib.SMTP(gmail_ipv4, 587, timeout=10.0) as server:
-            # server_hostname evita que falle la validación del certificado SSL al usar una IP
-            server.starttls(server_hostname='smtp.gmail.com')
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
-            
-        print("✨ [LOG] ¡Correo enviado con éxito desde el hilo secundario!")
-        return True
     except Exception as e:
-        print(f"❌ [LOG] Error al enviar correo en el hilo: {e}")
+        print(f"❌ [LOG] Error al contactar el webhook: {e}")
         return False
 
 # --- INTERFAZ: Formulario para ingresar el Código recibido ---
