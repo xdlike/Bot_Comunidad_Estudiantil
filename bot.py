@@ -21,7 +21,7 @@ ROLE_VERIFICADO_ID = int(os.getenv('ROLE_VERIFICADO_ID', 0))
 # Diccionario temporal en memoria: { ID_Discord: {"correo": "...", "codigo": "..."} }
 datos_verificacion = {}
 
-# --- FUNCIÓN: Envío de Correo (Ejecutada en segundo plano con Timeout) ---
+# --- FUNCIÓN: Envío de Correo (Ejecutada en segundo plano con Timeout e IPv4 Forzado) ---
 def enviar_correo_verificacion(correo_alumno, codigo_seguridad):
     try:
         # Redacción diseñada para mitigar filtros antispam
@@ -33,9 +33,19 @@ def enviar_correo_verificacion(correo_alumno, codigo_seguridad):
 
         print(f"🔌 [LOG] Conectando a Gmail para enviar código a: {correo_alumno}...")
         
-        # Conexión blindada con un límite de espera de 10 segundos
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10.0) as server:
-            server.starttls()
+        # 🌐 TRUCO CLAVE: Forzamos la resolución de Gmail estrictamente a IPv4 numérico
+        import socket
+        try:
+            gmail_ipv4 = socket.gethostbyname('smtp.gmail.com')
+            print(f"🔍 [LOG] IP de Gmail forzada a IPv4: {gmail_ipv4}")
+        except Exception as socket_error:
+            print(f"⚠️ [LOG] Falló resolución IPv4, usando host por defecto: {socket_error}")
+            gmail_ipv4 = 'smtp.gmail.com'
+        
+        # Conexión usando la IP IPv4 fija para saltar el bloqueo de Render
+        with smtplib.SMTP(gmail_ipv4, 587, timeout=10.0) as server:
+            # server_hostname evita que falle la validación del certificado SSL al usar una IP
+            server.starttls(server_hostname='smtp.gmail.com')
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
             
