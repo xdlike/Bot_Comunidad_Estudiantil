@@ -29,13 +29,18 @@ def enviar_correo_verificacion(correo_alumno, codigo_seguridad):
         msg['From'] = EMAIL_SENDER
         msg['To'] = correo_alumno
 
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        print(f"🔌 [LOG] Conectando a Gmail para enviar código a: {correo_alumno}...")
+        
+        # 🛠️ REPARACIÓN: Agregamos timeout=10.0 para que no se quede colgado infinitamente en la nube
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10.0) as server:
             server.starttls()
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
+            
+        print("✨ [LOG] ¡Correo enviado con éxito desde el hilo secundario!")
         return True
     except Exception as e:
-        print(f"❌ Error al enviar correo: {e}")
+        print(f"❌ [LOG] Error al enviar correo en el hilo: {e}")
         return False
 
 # --- INTERFAZ: Formulario para ingresar el Código recibido ---
@@ -71,30 +76,31 @@ class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        # 1. Le decimos a Discord que espere
-        await interaction.response.defer(ephemeral=True)
-        
-        correo = self.correo.value
-        
-        # 2. 🎲 GENERAR CÓDIGO REAL DE 6 DÍGITOS
-        import random
-        codigo = str(random.randint(100000, 999999)) 
+    # 1. Le decimos a Discord que espere (Evita el "Interacción fallida")
+    await interaction.response.defer(ephemeral=True)
+    
+    correo = self.correo.value
+    
+    # 2. 🎲 GENERAR CÓDIGO REAL DE 6 DÍGITOS
+    import random
+    codigo = str(random.randint(100000, 999999)) 
 
-        # 3. Corremos el envío en un hilo separado
-        import asyncio
-        exito = await asyncio.to_thread(enviar_correo_verificacion, correo, codigo)
+    # 3. 🧵 Corremos el envío en un hilo separado (Obligatorio para Render)
+    import asyncio
+    print(f"🧵 [LOG] Lanzando envío de correo en hilo separado para {correo}...")
+    exito = await asyncio.to_thread(enviar_correo_verificacion, correo, codigo)
 
-        # 4. Respondemos al alumno
-        if exito:
-            await interaction.followup.send(
-                f"✅ Hemos enviado un código de verificación a **{correo}**. Por favor revisa tu bandeja de entrada (y la carpeta de spam).", 
-                ephemeral=True
-            )
-        else:
-            await interaction.followup.send(
-                "❌ Hubo un problema al enviar el correo. Por favor contacta al staff del servidor.", 
-                ephemeral=True
-            )
+    # 4. Respondemos al alumno
+    if exito:
+        await interaction.followup.send(
+            f"✅ Hemos enviado un código de verificación a **{correo}**. Por favor revisa tu bandeja de entrada (y la carpeta de spam).", 
+            ephemeral=True
+        )
+    else:
+        await interaction.followup.send(
+            "❌ Hubo un problema al enviar el correo. Por favor contacta al staff del servidor.", 
+            ephemeral=True
+        )
 
         codigo = str(random.randint(100000, 999999))
         datos_verificacion[interaction.user.id] = {"correo": correo, "codigo": codigo}
