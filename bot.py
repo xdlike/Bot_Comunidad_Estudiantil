@@ -81,25 +81,33 @@ class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        # 1. Le decimos a Discord que espere el proceso asíncrono
-        await interaction.response.defer(ephemeral=True)
+        # 1. Traemos el correo, le quitamos espacios y lo pasamos a minúsculas
+        correo = self.correo.value.strip().lower()
         
-        correo = self.correo.value.strip()
+        # 🔒 CANDADO DE SEGURIDAD: Validamos que termine con dominio institucional
+        if not (correo.endswith('@tec.mx') or correo.endswith('@itesm.mx')):
+            await interaction.response.send_message(
+                "❌ **Acceso denegado.** Debes ingresar un correo institucional válido del Tec (que termine en `@tec.mx` o `@itesm.mx`).", 
+                ephemeral=True
+            )
+            return # Detenemos la ejecución aquí mismo para que no mande nada a Make
+
+        # 2. Si pasa el candado, le decimos a Discord que espere el proceso asíncrono
+        await interaction.response.defer(ephemeral=True)
         user_id = interaction.user.id
         
-        # 2. Generamos el código numérico y lo guardamos inmediatamente en memoria
+        # 3. Generamos el código numérico y lo guardamos inmediatamente en memoria
         codigo = str(random.randint(100000, 999999))
         datos_verificacion[user_id] = {"correo": correo, "codigo": codigo}
 
-        # 3. Lanzamos el envío del correo en un hilo secundario sin congelar el bot
+        # 4. Lanzamos el envío del correo en un hilo secundario sin congelar el bot
         import asyncio
         print(f"🧵 [LOG] Lanzando envío de correo en hilo separado para {correo}...")
         exito = await asyncio.to_thread(enviar_correo_verificacion, correo, codigo)
 
-        # 4. Evaluamos el resultado del envío
+        # 5. Evaluamos el resultado del envío
         if exito:
-            # Si el correo sale bien, generamos dinámicamente el botón para meter el token
-            view = ui.View()
+            view = ui.View(timeout=600.0) # 10 minutos de margen para los alumnos
             btn_codigo = ui.Button(label="Ingresar Código", style=discord.ButtonStyle.green)
             
             async def click_codigo(inter):
@@ -114,7 +122,6 @@ class ModalCorreo(ui.Modal, title="Paso 2: Verificación Institucional"):
                 ephemeral=True
             )
         else:
-            # Si falló la conexión con Gmail, limpiamos el registro fallido y notificamos
             if user_id in datos_verificacion:
                 del datos_verificacion[user_id]
             await interaction.followup.send(
